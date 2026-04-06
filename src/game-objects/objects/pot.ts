@@ -1,0 +1,60 @@
+import * as Phaser from 'phaser'
+import { CustomGameObject, Position } from '../../common/types';
+import { ASSET_KEYS } from '../../common/assets';
+import { InteractiveObjectComponent } from '../../components/game-object/interactive-object-component';
+import { INTERACTIVE_OBJECT_TYPE } from '../../common/common';
+import { ThorwableGameObjectComponent } from '../../components/game-object/throwable-object-component';
+import { TiledPotObject } from '../../common/tiled/types';
+
+
+
+export class Pot extends Phaser.Physics.Arcade.Sprite implements CustomGameObject{
+    #position: Position;
+
+    constructor(scene: Phaser.Scene, config: TiledPotObject) {
+        super(scene, config.x, config.y, ASSET_KEYS.POT, 0);
+
+        scene.add.existing(this);
+        scene.physics.add.existing(this);
+        this.setOrigin(0, 1).setImmovable(true);
+
+        this.#position = { x: config.x, y: config.y }
+        
+        //add components 
+        new InteractiveObjectComponent(this, INTERACTIVE_OBJECT_TYPE.PICKUP);
+        new ThorwableGameObjectComponent(this, () => {
+            this.break();
+        });
+
+        //disable obejct when player can't see them
+        this.disableObject();
+    }
+
+    public disableObject(): void {
+        (this.body as Phaser.Physics.Arcade.Body).enable = false;
+        this.active = false;
+        this.visible = false;
+    }
+
+        public enableObject(): void {
+        (this.body as Phaser.Physics.Arcade.Body).enable = true;
+        this.active = true;
+        this.visible = true;
+    }
+
+    public break(): void {
+        (this.body as Phaser.Physics.Arcade.Body).enable = false;
+        this.setTexture(ASSET_KEYS.POT_BREAK, 0).play(ASSET_KEYS.POT_BREAK);
+        this.once(Phaser.Animations.Events.ANIMATION_COMPLETE_KEY + ASSET_KEYS.POT_BREAK, () => {
+            this.setTexture(ASSET_KEYS.POT, 0);
+            this.disableObject();
+        })
+    }
+
+    public resetPosition(): void {
+        this.scene.time.delayedCall(1, () => {
+            this.setPosition(this.#position.x, this.#position.y).setOrigin(0,1);
+            this.enableObject();
+        });
+    }
+}
